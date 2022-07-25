@@ -2,7 +2,11 @@
 #include <inttypes.h>
 #include <stdio.h>
 
-typedef struct safe_buffer SafeBuffer;
+typedef struct {
+   uint8_t *buffer;
+   size_t length;
+   size_t capacity;
+} SafeBuffer;
 
 size_t get_buffer_length(SafeBuffer *safe_buffer);
 size_t get_buffer_capacity(SafeBuffer *safe_buffer);

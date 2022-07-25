@@ -4,14 +4,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 
-#define POOL_SIZE 2
-
-typedef struct safe_buffer {
-  size_t length;
-  size_t capacity;
-  uint8_t *buffer;
-  uint8_t index;
-} SafeBuffer;
+#define POOL_SIZE 4
 
 typedef struct page_pool_entry {
   uint8_t buffer[PAGE_SIZE];
@@ -54,7 +47,6 @@ SafeBuffer *allocate_page_buffer(void) {
     PagePoolEntry *pool_entry = page_pool + i;
     if (false == pool_entry->allocated) {
       SafeBuffer *safe_buffer = &pool_entry->safe_buffer;
-      safe_buffer->index = i;
       safe_buffer->capacity = PAGE_SIZE;
       safe_buffer->buffer = pool_entry->buffer;
       pool_entry->allocated = true;
@@ -67,10 +59,13 @@ SafeBuffer *allocate_page_buffer(void) {
 
 void free_page_buffer(SafeBuffer *buffer) {
   assert(buffer != NULL);
-  assert(buffer->index < POOL_SIZE);
-  assert(true == page_pool[buffer->index].allocated);
-  PagePoolEntry *pool_entry = page_pool + buffer->index;
-  pool_entry->allocated = false;
+  for (uint32_t i = 0; i < POOL_SIZE; ++i) {
+    PagePoolEntry *pool_entry = page_pool + i;
+    if (&pool_entry->safe_buffer == buffer) {
+      assert(pool_entry->allocated);
+      pool_entry->allocated = false;
+    }
+  }
 }
 
 SafeBuffer *allocate_record_buffer(void) {
@@ -78,7 +73,6 @@ SafeBuffer *allocate_record_buffer(void) {
     RecordPoolEntry *pool_entry = record_pool + i;
     if (false == record_pool->allocated) {
       SafeBuffer *safe_buffer = &record_pool->safe_buffer;
-      safe_buffer->index = i;
       safe_buffer->capacity = RECORD_SIZE_ESTIMATE;
       safe_buffer->buffer = pool_entry->buffer;
       pool_entry->allocated = true;
@@ -91,8 +85,11 @@ SafeBuffer *allocate_record_buffer(void) {
 
 void free_record_buffer(SafeBuffer *buffer) {
   assert(buffer != NULL);
-  assert(buffer->index < POOL_SIZE);
-  assert(true == record_pool[buffer->index].allocated);
-  RecordPoolEntry *pool_entry = record_pool + buffer->index;
-  pool_entry->allocated = false;
+  for (uint32_t i = 0; i < POOL_SIZE; ++i) {
+    RecordPoolEntry *record_entry = record_pool + i;
+    if (&record_entry->safe_buffer == buffer) {
+      assert(record_entry->allocated);
+      record_entry->allocated = false;
+    }
+  }
 }
