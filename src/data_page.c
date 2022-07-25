@@ -10,11 +10,11 @@
 
 #define BYTE_SIZE (8)
 
-#define PAGE_ID_SIZE (8)
-#define PAGE_ID_OFFSET (0)
+#define HASH_SIZE (8)
+#define HASH_OFFSET (0)
 
 #define FREE_PAGE_SIZE (1)
-#define FREE_PAGE_OFFSET (PAGE_ID_OFFSET + PAGE_ID_SIZE)
+#define FREE_PAGE_OFFSET (HASH_OFFSET + HASH_SIZE)
 
 #define NO_ENTRIES_SIZE (2)
 #define NO_ENTRIES_OFFSET (FREE_PAGE_SIZE + FREE_PAGE_OFFSET)
@@ -31,7 +31,7 @@ static uint32_t free_spot(const DataPage *data_page);
 static void update_no_entries(DataPage *data_page, size_t no_entries);
 static void update_is_free_page(DataPage *data_page, bool is_free);
 static void update_free_space(DataPage *data_page, size_t free_space);
-static void update_page_id(DataPage *data_page, uint64_t page_id);
+static void update_hash(DataPage *data_page, uint64_t hash);
 
 DataPage data_page_from_data(SafeBuffer *safe_buffer, uint64_t page_id) {
   assert(safe_buffer);
@@ -40,7 +40,7 @@ DataPage data_page_from_data(SafeBuffer *safe_buffer, uint64_t page_id) {
   DataPage data_page = {.safe_buffer = safe_buffer};
   update_is_free_page(&data_page, true);
   update_free_space(&data_page, DATA_PAGE_SIZE - DATA_OFFSET);
-  update_page_id(&data_page, page_id);
+  update_hash(&data_page, page_id);
   return data_page;
 }
 
@@ -70,11 +70,10 @@ bool data_page_is_free_page(const DataPage *data_page) {
                                        FREE_PAGE_SIZE);
 }
 
-uint64_t data_page_id(const DataPage *data_page) {
+uint64_t data_page_hash(const DataPage *data_page) {
   assert_data_page(data_page);
   const uint8_t *buffer = get_buffer(data_page->safe_buffer);
-  return (uint64_t)transform_bytes_to_data(buffer, PAGE_ID_OFFSET,
-                                           PAGE_ID_SIZE);
+  return (uint64_t)transform_bytes_to_data(buffer, HASH_OFFSET, HASH_SIZE);
 }
 
 static bool find_entry(const DataPage *data_page, const char *key,
@@ -125,9 +124,6 @@ bool data_page_delete_entry(DataPage *data_page, const char *key) {
     memmove(entry_start, next_entry, copy_length);
     size_t no_entries = data_page_no_entries(data_page);
     update_no_entries(data_page, no_entries - 1);
-    if (0 == no_entries) {
-      update_is_free_page(data_page, true);
-    }
     size_t free_space = data_page_free_space(data_page);
     update_free_space(data_page, free_space + copy_length);
     uint32_t first_free_spot = free_spot(data_page);
@@ -137,7 +133,8 @@ bool data_page_delete_entry(DataPage *data_page, const char *key) {
   return false;
 }
 
-bool data_page_insert_entry(DataPage *data_page, const Record *record) {
+bool data_page_insert_entry(DataPage *data_page, const Record *record,
+                            uint64_t hash) {
   assert_data_page(data_page);
   assert(record);
 
@@ -152,8 +149,9 @@ bool data_page_insert_entry(DataPage *data_page, const Record *record) {
   size_t no_entries = data_page_no_entries(data_page);
   update_no_entries(data_page, no_entries + 1);
   if (1 == no_entries) {
-    update_is_free_page(data_page, false);
+    update_hash(data_page, hash);
   }
+  update_is_free_page(data_page, false);
   update_free_space(data_page, free_space - record_length);
   return true;
 }
@@ -212,7 +210,7 @@ static void update_free_space(DataPage *data_page, size_t free_space) {
   write_data_to_buffer(buffer, FREE_SPACE_OFFSET, FREE_SPACE_SIZE, free_space);
 }
 
-static void update_page_id(DataPage *data_page, uint64_t page_id) {
+static void update_hash(DataPage *data_page, uint64_t hash) {
   uint8_t *buffer = get_buffer(data_page->safe_buffer);
-  write_data_to_buffer(buffer, PAGE_ID_OFFSET, PAGE_ID_SIZE, page_id);
+  write_data_to_buffer(buffer, HASH_OFFSET, HASH_SIZE, hash);
 }
