@@ -53,7 +53,6 @@ Record record_from_data(SafeBuffer *safe_buffer, const char *key,
   assert(value);
   Record record = {.safe_buffer = safe_buffer};
   Timestamp timestamp = get_timestamp();
-  printf("%ld, %ld\n", timestamp.seconds, timestamp.nanoseconds);
   clean_record(&record);
   insert_key(&record, key);
   record_update_data(&record, value, &timestamp);
@@ -112,7 +111,6 @@ Timestamp record_last_timestamp(const Record *record) {
   uint64_t seconds = read_data_from_buffer(buffer, offset, sizeof(uint64_t));
   uint64_t nanoseconds = read_data_from_buffer(
       buffer, offset + TIMESTAMP_SECONDS_SIZE, sizeof(uint64_t));
-  printf("%lu, %lu\n", seconds, nanoseconds);
   return (Timestamp){seconds, nanoseconds};
 }
 
@@ -128,6 +126,14 @@ const uint8_t *record_get_buffer(const Record *record) {
 }
 
 void destroy_record(Record *record) { free_record_buffer(record->safe_buffer); }
+
+Record record_clone(Record *record) {
+  assert(record);
+  SafeBuffer *safe_buffer = allocate_record_buffer();
+  memcpy(get_buffer(safe_buffer), get_buffer(record->safe_buffer),
+         get_buffer_length(record->safe_buffer));
+  return (Record){.safe_buffer = safe_buffer};
+}
 
 static Timestamp get_timestamp() {
   struct timespec ts;
@@ -197,14 +203,12 @@ static void update_first_timestamp(Record *record, const Timestamp *timestamp) {
 
 static void update_last_timestamp(Record *record, const Timestamp *timestamp) {
   uint32_t t_offset = timestamp_last_offset(record);
-  printf("offset = %u\n", t_offset);
   update_timestamp_helper(record, timestamp, t_offset);
 }
 
 static void update_timestamp_helper(Record *record, const Timestamp *timestamp,
                                     uint32_t offset) {
   uint8_t *buffer = get_buffer(record->safe_buffer);
-   printf("helper: %lu, %lu\n", timestamp->seconds, timestamp->nanoseconds);
   write_data_to_buffer(buffer, (uint64_t)timestamp->seconds, offset,
                        sizeof(uint64_t));
   write_data_to_buffer(buffer, (uint64_t)timestamp->nanoseconds,

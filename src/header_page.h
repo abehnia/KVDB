@@ -1,10 +1,8 @@
 #pragma once
 
 #include "buffer_manager.h"
+#include "constants.h"
 #include <stdbool.h>
-
-#define HEADER_PAGE_SIZE (4096)
-#define DATABASE_VERSION (3834052067ULL)
 
 typedef struct {
   SafeBuffer *safe_buffer;

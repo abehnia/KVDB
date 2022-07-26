@@ -71,7 +71,8 @@ int create_database_file(char *path, uint64_t no_elements,
   return fd;
 }
 
-int open_database_file(char *path, enum FileErrorStatus *error) {
+int open_database_file(char *path, bool with_write_lock,
+                       enum FileErrorStatus *error) {
   int fd = open(path, O_RDWR);
   *error = success;
 
@@ -81,18 +82,24 @@ int open_database_file(char *path, enum FileErrorStatus *error) {
     *error = failure;
     return -1;
   }
-  read_lock_page(fd, 0, error);
+  if (with_write_lock) {
+    write_lock_page(fd, 0, error);
+  } else {
+    read_lock_page(fd, 0, error);
+  }
   if (failure == *error) {
     return -1;
   }
   SafeBuffer *safe_buffer = allocate_page_buffer();
   if (NULL == safe_buffer) {
     *error = failure;
+    unlock_page(fd, 0, error);
     return -1;
   }
   // check if header is correct
   read_page_into_buffer(fd, 0, safe_buffer, error);
   if (failure == *error) {
+    unlock_page(fd, 0, error);
     free_page_buffer(safe_buffer);
     return -1;
   }
@@ -100,11 +107,32 @@ int open_database_file(char *path, enum FileErrorStatus *error) {
   uint64_t local_header_version = header_version(&header_page);
   if (local_header_version != DATABASE_VERSION) {
     *error = failure;
+    unlock_page(fd, 0, error);
     free_page_buffer(safe_buffer);
     return -1;
   }
 
   return fd;
+}
+
+void locked_read_page_into_buffer(int file, uint64_t page_id,
+                                  SafeBuffer *safe_buffer,
+                                  enum FileErrorStatus *error) {
+  assert_page_size(page_id);
+
+  *error = success;
+
+  read_lock_page(file, page_id, error);
+  if (failure == *error) {
+    return;
+  }
+
+  read_page_into_buffer(file, page_id, safe_buffer, error);
+  if (failure == *error) {
+    return;
+  }
+
+  unlock_page(file, page_id, error);
 }
 
 void read_page_into_buffer(int file, uint64_t page_id, SafeBuffer *safe_buffer,
@@ -129,6 +157,26 @@ void read_page_into_buffer(int file, uint64_t page_id, SafeBuffer *safe_buffer,
   }
 
   set_buffer_length(safe_buffer, PAGE_SIZE);
+}
+
+void locked_write_page_to_file(int file, SafeBuffer *safe_buffer,
+                               uint64_t page_id, bool append_only,
+                               enum FileErrorStatus *error) {
+  assert_page_size(page_id);
+
+  *error = success;
+
+  write_lock_page(file, page_id, error);
+  if (failure == *error) {
+    return;
+  }
+
+  write_page_to_file(file, safe_buffer, page_id, append_only, error);
+  if (failure == *error) {
+    return;
+  }
+
+  unlock_page(file, page_id, error);
 }
 
 void write_page_to_file(int file, SafeBuffer *safe_buffer, uint64_t page_id,

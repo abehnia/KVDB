@@ -3,9 +3,9 @@
 #include <stdio.h>
 
 typedef struct {
-   uint8_t *buffer;
-   size_t length;
-   size_t capacity;
+  uint8_t *buffer;
+  size_t length;
+  size_t capacity;
 } SafeBuffer;
 
 size_t get_buffer_length(SafeBuffer *safe_buffer);

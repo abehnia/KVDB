@@ -1,10 +1,8 @@
 #pragma once
 
 #include "buffer_manager.h"
+#include "constants.h"
 #include <stdbool.h>
-
-#define MAX_STRING_LENGTH (100)
-#define RECORD_SIZE_ESTIMATE (MAX_STRING_LENGTH + MAX_STRING_LENGTH + 38)
 
 typedef struct {
   SafeBuffer *safe_buffer;
@@ -22,7 +20,9 @@ const char *record_key(const Record *record);
 const char *record_value(const Record *record);
 Timestamp record_first_timestamp(const Record *record);
 Timestamp record_last_timestamp(const Record *record);
-void record_update_data(Record *record, const char *value, const Timestamp *timestamp);
+void record_update_data(Record *record, const char *value,
+                        const Timestamp *timestamp);
 uint32_t get_record_length(const Record *record);
 const uint8_t *record_get_buffer(const Record *record);
 void destroy_record(Record *record);
+Record record_clone(Record *record);

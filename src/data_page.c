@@ -83,7 +83,6 @@ static bool find_entry(const DataPage *data_page, const char *key,
   uint32_t data_offset = DATA_OFFSET;
   uint8_t *buffer = get_buffer(data_page->safe_buffer);
 
-  uint32_t i = data_offset;
   while (data_offset < DATA_PAGE_SIZE && buffer[data_offset] != 0) {
     SafeBuffer safe_buffer = (SafeBuffer){.buffer = buffer + data_offset,
                                           .length = buffer[data_offset],
@@ -92,11 +91,11 @@ static bool find_entry(const DataPage *data_page, const char *key,
     const char *local_key = record_key(&local_record);
     int cmp = strncmp(local_key, key, MAX_STRING_LENGTH);
     if (0 == cmp) {
-      *record = local_record;
-      *index = i;
+      *record = record_clone(&local_record);
+      *index = data_offset;
       return true;
     }
-    i += buffer[data_offset];
+    data_offset += buffer[data_offset];
   }
 
   return false;
