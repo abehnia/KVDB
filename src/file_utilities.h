@@ -2,11 +2,10 @@
 
 #include "buffer_manager.h"
 #include "constants.h"
+#include "error.h"
 #include <inttypes.h>
 #include <stdbool.h>
 #include <stdio.h>
-
-enum FileErrorStatus { success, failure };
 
 int create_database_file(char *path, uint64_t no_elements,
                          enum FileErrorStatus *error);

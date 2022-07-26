@@ -1,5 +1,6 @@
 #include "data_page.h"
 #include "buffer_manager.h"
+#include "buffer_utilities.h"
 #include "record.h"
 #include <assert.h>
 #include <stdint.h>
@@ -25,8 +26,6 @@
 
 #define DATA_OFFSET (FREE_SPACE_OFFSET + FREE_SPACE_SIZE)
 
-static uint64_t transform_bytes_to_data(const uint8_t *buffer, uint32_t offset,
-                                        uint32_t size);
 static void assert_data_page(const DataPage *data_page);
 static uint32_t free_spot(const DataPage *data_page);
 static void update_no_entries(DataPage *data_page, size_t no_entries);
@@ -54,28 +53,28 @@ DataPage create_data_page(SafeBuffer *safe_buffer) {
 size_t data_page_free_space(const DataPage *data_page) {
   assert_data_page(data_page);
   const uint8_t *buffer = get_buffer(data_page->safe_buffer);
-  return (size_t)transform_bytes_to_data(buffer, FREE_SPACE_OFFSET,
+  return (size_t)read_data_from_buffer(buffer, FREE_SPACE_OFFSET,
                                          FREE_SPACE_SIZE);
 }
 
 size_t data_page_no_entries(const DataPage *data_page) {
   assert_data_page(data_page);
   const uint8_t *buffer = get_buffer(data_page->safe_buffer);
-  return (size_t)transform_bytes_to_data(buffer, NO_ENTRIES_OFFSET,
+  return (size_t)read_data_from_buffer(buffer, NO_ENTRIES_OFFSET,
                                          NO_ENTRIES_SIZE);
 }
 
 bool data_page_is_free_page(const DataPage *data_page) {
   assert_data_page(data_page);
   const uint8_t *buffer = get_buffer(data_page->safe_buffer);
-  return (bool)transform_bytes_to_data(buffer, FREE_PAGE_OFFSET,
+  return (bool)read_data_from_buffer(buffer, FREE_PAGE_OFFSET,
                                        FREE_PAGE_SIZE);
 }
 
 uint64_t data_page_hash(const DataPage *data_page) {
   assert_data_page(data_page);
   const uint8_t *buffer = get_buffer(data_page->safe_buffer);
-  return (uint64_t)transform_bytes_to_data(buffer, HASH_OFFSET, HASH_SIZE);
+  return (uint64_t)read_data_from_buffer(buffer, HASH_OFFSET, HASH_SIZE);
 }
 
 static bool find_entry(const DataPage *data_page, const char *key,
@@ -171,23 +170,6 @@ const uint8_t *data_page_buffer(DataPage *data_page) {
 static void assert_data_page(const DataPage *data_page) {
   assert(data_page);
   assert(data_page->safe_buffer);
-}
-
-static uint64_t transform_bytes_to_data(const uint8_t *buffer, uint32_t offset,
-                                        uint32_t size) {
-  uint64_t return_value = 0;
-  for (uint64_t i = offset; i < (offset + size); ++i) {
-    return_value += ((uint64_t)buffer[i] << (BYTE_SIZE * (i - offset)));
-  }
-  return return_value;
-}
-
-static void write_data_to_buffer(uint8_t *buffer, uint32_t offset,
-                                 uint32_t size, uint64_t data) {
-  for (uint64_t i = offset; i < (offset + size); ++i) {
-    buffer[i] = data & 0xFF;
-    data = data >> BYTE_SIZE;
-  }
 }
 
 static uint32_t free_spot(const DataPage *data_page) {

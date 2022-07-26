@@ -2,7 +2,8 @@
 #include "file_utilities.h"
 #include "record.h"
 
-int open_database(char *path, enum FileErrorStatus *error);
+int open_database(char *path, bool with_write_lock,
+                  enum FileErrorStatus *error);
 void create_database(char *path, uint64_t no_elements,
                      enum FileErrorStatus *error);
 bool query_element(int fd, const char *key, Record *record,

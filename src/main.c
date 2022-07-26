@@ -1,4 +1,6 @@
 #include "engine.h"
+#include "file_utilities.h"
+#include "parser.h"
 #include "record.h"
 #include <inttypes.h>
 #include <stdio.h>
@@ -6,83 +8,110 @@
 #include <string.h>
 #include <time.h>
 
-static uint64_t get_most_significant(uint64_t nanoseconds) {
-  while (nanoseconds >= 1000) {
-    nanoseconds /= 10;
-  }
-  return nanoseconds;
-}
-
 int main(int argc, char **argv) {
+
   if (argc < 4) {
     fprintf(stderr, "wrong number of arguments.\n");
     return 1;
   }
-  if (0 == strncmp(argv[1], "create", 6)) {
-    char *path = argv[2];
-    uint64_t number_of_elements = atol(argv[3]);
-    enum FileErrorStatus error = failure;
-    create_database(path, number_of_elements, &error);
+
+  enum FileErrorStatus error;
+  Command command = parse_command(argv[1], &error);
+  ParsedValues parsed_values = parse_values(command, argc, argv, &error);
+  if (failure == error) {
+    fprintf(stderr, "invalid input.\n");
+    return 1;
+  }
+
+  if (COMMAND_CREATE == command) {
+    create_database((char *)parsed_values.path, parsed_values.no_elements,
+                    &error);
     if (success == error) {
       printf("successfully created database.\n");
+    } else {
+      printf("error in create database.\n");
     }
-  } else if (0 == strncmp(argv[1], "insert", 6)) {
-    char *path = argv[2];
-    char *key = argv[3];
-    char *value = argv[4];
-    enum FileErrorStatus error = failure;
-    int fd = open_database(path, &error);
+  }
+
+  if (COMMAND_GET == command) {
+    int fd = open_database((char *)parsed_values.path, false, &error);
     if (failure == error) {
-      exit(1);
+      return 1;
     }
-    insert_element(fd, key, value, &error);
-    if (success == error) {
-      printf("successfully inserted element.\n");
-    }
-  } else if (0 == strncmp(argv[1], "get", 6)) {
-    char *path = argv[2];
-    char *key = argv[3];
-    enum FileErrorStatus error = failure;
+
     Record record;
-    int fd = open_database(path, &error);
-    if (failure == error) {
-      exit(1);
-    }
-    bool found = query_element(fd, key, &record, &error);
+    bool found = query_element(fd, parsed_values.key, &record, &error);
+
     if (success == error) {
       if (found) {
         printf("value: %s\n", record_value(&record));
       } else {
-        printf("key not found.\n");
+        printf("cannot find element.\n");
       }
+    } else {
+      printf("error in find element.\n");
     }
-  } else if (0 == strncmp(argv[1], "timestamp", 9)) {
-    char *path = argv[2];
-    char *key = argv[3];
-    enum FileErrorStatus error = failure;
-    Record record;
-    int fd = open_database(path, &error);
+    close_database_file(fd, &error);
+  }
+
+  if (COMMAND_INSERT == command) {
+    int fd = open_database((char *)parsed_values.path, true, &error);
     if (failure == error) {
-      exit(1);
+      return 1;
     }
-    bool found = query_element(fd, key, &record, &error);
+    insert_element(fd, parsed_values.key, parsed_values.value, &error);
+    if (success == error) {
+      printf("successfully inserted element.\n");
+    } else {
+      printf("error in insert element.\n");
+    }
+    close_database_file(fd, &error);
+  }
+
+  if (COMMAND_DELETE == command) {
+    int fd = open_database((char *)parsed_values.path, true, &error);
+    if (failure == error) {
+      return 1;
+    }
+    bool found = delete_element(fd, parsed_values.key, &error);
+    if (success == error) {
+      if (found) {
+        printf("successfully deleted element.\n");
+      } else {
+        printf("cannot find element,\n");
+      }
+    } else {
+      printf("error in delete element.\n");
+    }
+    close_database_file(fd, &error);
+  }
+
+  if (COMMAND_TIMESTAMP == command) {
+    int fd = open_database((char *)parsed_values.path, false, &error);
+    if (failure == error) {
+      return 1;
+    }
+
+    Record record;
+    bool found = query_element(fd, parsed_values.key, &record, &error);
+
     if (success == error) {
       if (found) {
         Timestamp first = record_first_timestamp(&record);
         Timestamp last = record_last_timestamp(&record);
-        char first_buff[100];
-        char second_buff[100];
-        strftime(first_buff, sizeof(first_buff), "%F %T",
-                 gmtime((time_t *)&first.seconds));
-        strftime(second_buff, sizeof(second_buff), "%F %T",
-                 gmtime((time_t *)&last.seconds));
-        printf("first_timestamp: %s.%03ld last_timestamp: %s.%03ld\n",
-               first_buff, get_most_significant(first.nanoseconds), second_buff,
-               get_most_significant(last.nanoseconds));
+        char first_buffer[100];
+        char second_buffer[100];
+        format_timestamp_into_date(&first, first_buffer, sizeof(first_buffer));
+        format_timestamp_into_date(&last, second_buffer, sizeof(first_buffer));
+        printf("first ts: %s, last ts: %s\n", first_buffer, second_buffer);
       } else {
-        printf("key not found.\n");
+        printf("cannot find element.\n");
       }
+    } else {
+      printf("error in find element.\n");
     }
+    close_database_file(fd, &error);
   }
+
   return 0;
 }

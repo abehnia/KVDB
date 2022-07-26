@@ -47,14 +47,14 @@ int create_database_file(char *path, uint64_t no_elements,
         free_page_buffer(safe_buffer);
         return -1;
       }
-      HeaderPage header_page = create_header_page(safe_buffer, no_pages_needed);
+      create_header_page(safe_buffer, no_pages_needed);
       write_page_to_file(fd, safe_buffer, i, true, error);
       if (failure == *error) {
         free_page_buffer(safe_buffer);
         return -1;
       }
     } else {
-      DataPage data_page = data_page_from_data(safe_buffer, i);
+      data_page_from_data(safe_buffer, i);
       write_page_to_file(fd, safe_buffer, i, true, error);
       if (failure == *error) {
         free_page_buffer(safe_buffer);

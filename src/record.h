@@ -26,3 +26,4 @@ uint32_t get_record_length(const Record *record);
 const uint8_t *record_get_buffer(const Record *record);
 void destroy_record(Record *record);
 Record record_clone(Record *record);
+void format_timestamp_into_date(const Timestamp *timestamp, char *date_buffer, size_t len_date_buffer);

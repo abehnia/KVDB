@@ -1,5 +1,6 @@
 #include "header_page.h"
 #include "buffer_manager.h"
+#include "buffer_utilities.h"
 #include <assert.h>
 #include <stdint.h>
 #include <string.h>
@@ -18,10 +19,6 @@
 // page id (8 bytes) | database_version (8 bytes) | no_pages(8 bytes) | reserved
 // (4072 bytes)
 
-static uint64_t transform_bytes_to_data(const uint8_t *buffer, uint32_t offset,
-                                        uint32_t size);
-static void write_data_to_buffer(uint8_t *buffer, uint32_t offset,
-                                 uint32_t size, uint64_t data);
 static void update_page_id(HeaderPage *header_page, size_t free_space);
 static void update_version(HeaderPage *header_page, uint64_t version);
 static void update_no_pages(HeaderPage *header_page, uint64_t no_pages);
@@ -47,21 +44,21 @@ HeaderPage open_header_page(SafeBuffer *safe_buffer) {
 uint64_t header_no_pages(const HeaderPage *header_page) {
   assert_header_page(header_page);
   const uint8_t *buffer = get_buffer(header_page->safe_buffer);
-  return (uint64_t)transform_bytes_to_data(buffer, NO_PAGES_OFFSET,
+  return (uint64_t)read_data_from_buffer(buffer, NO_PAGES_OFFSET,
                                            NO_PAGES_SIZE);
 }
 
 uint64_t header_page_id(const HeaderPage *header_page) {
   assert_header_page(header_page);
   const uint8_t *buffer = get_buffer(header_page->safe_buffer);
-  return (uint64_t)transform_bytes_to_data(buffer, PAGE_ID_OFFSET,
+  return (uint64_t)read_data_from_buffer(buffer, PAGE_ID_OFFSET,
                                            PAGE_ID_SIZE);
 }
 
 uint64_t header_version(const HeaderPage *header_page) {
   assert_header_page(header_page);
   const uint8_t *buffer = get_buffer(header_page->safe_buffer);
-  return (uint64_t)transform_bytes_to_data(buffer, VERSION_OFFSET,
+  return (uint64_t)read_data_from_buffer(buffer, VERSION_OFFSET,
                                            VERSION_SIZE);
 }
 
@@ -74,23 +71,6 @@ const uint8_t *header_page_buffer(HeaderPage *header_page) {
 void destroy_header_page(HeaderPage *header_page) {
   assert_header_page(header_page);
   free_page_buffer(header_page->safe_buffer);
-}
-
-static uint64_t transform_bytes_to_data(const uint8_t *buffer, uint32_t offset,
-                                        uint32_t size) {
-  uint64_t return_value = 0;
-  for (uint64_t i = offset; i < (offset + size); ++i) {
-    return_value += ((uint64_t)buffer[i] << (BYTE_SIZE * (i - offset)));
-  }
-  return return_value;
-}
-
-static void write_data_to_buffer(uint8_t *buffer, uint32_t offset,
-                                 uint32_t size, uint64_t data) {
-  for (uint64_t i = offset; i < (offset + size); ++i) {
-    buffer[i] = data & 0xFF;
-    data = data >> BYTE_SIZE;
-  }
 }
 
 static void update_page_id(HeaderPage *header_page, uint64_t page_id) {

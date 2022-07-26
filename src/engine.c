@@ -42,9 +42,9 @@ static bool is_space_enough(const DataPage *data_page, uint64_t index,
 static uint64_t no_pages(int fd, enum FileErrorStatus *error);
 
 // API Implementation
-int open_database(char *path, enum FileErrorStatus *error) {
+int open_database(char *path, bool with_write_lock , enum FileErrorStatus *error) {
   *error = success;
-  int fd = open_database_file(path, false, error);
+  int fd = open_database_file(path, with_write_lock, error);
   if (failure == *error) {
     *error = failure;
     return -1;
@@ -64,7 +64,7 @@ bool query_element(int fd, const char *key, Record *record,
 
   uint64_t number_pages = no_pages(fd, error);
   if (failure == *error) {
-    goto cleanup_1;
+    goto cleanup_0;
   }
 
   uint64_t index = hash(key, number_pages - 1);
@@ -72,6 +72,10 @@ bool query_element(int fd, const char *key, Record *record,
   DatabasePredicateClosure closure = {.predicate = is_key_match,
                                       .inner_arguments = &key_match};
   bool found = find_element(fd, &closure, number_pages, index, &index, error);
+
+  if (failure == *error) {
+    goto cleanup_0;
+  }
 
   if (!found) {
     goto cleanup_1;
@@ -85,19 +89,17 @@ bool query_element(int fd, const char *key, Record *record,
 
   read_page_into_buffer(fd, index, safe_buffer, error);
   if (failure == *error) {
-    goto cleanup_3;
+    goto cleanup_2;
   }
 
   DataPage data_page = create_data_page(safe_buffer);
   data_page_find_entry(&data_page, key, record);
   return_value = true;
 
-cleanup_3:
-  free_page_buffer(safe_buffer);
 cleanup_2:
-  unlock_page(fd, index, error);
+  free_page_buffer(safe_buffer);
 cleanup_1:
-  close_database_file(fd, error);
+  unlock_page(fd, index, error);
 cleanup_0:
   return return_value;
 }
@@ -108,13 +110,13 @@ void insert_element(int fd, const char *key, const char *value,
 
   uint64_t number_pages = no_pages(fd, error);
   if (failure == *error) {
-    goto cleanup_1;
+    goto cleanup_0;
   }
 
   SafeBuffer *record_safe_buffer = allocate_record_buffer();
   if (NULL == record_safe_buffer) {
     *error = failure;
-    goto cleanup_2;
+    goto cleanup_0;
   }
 
   Record record = record_from_data(record_safe_buffer, key, value);
@@ -126,6 +128,10 @@ void insert_element(int fd, const char *key, const char *value,
   uint64_t new_index = original_index;
   bool found = find_element(fd, &closure, number_pages, original_index,
                             &new_index, error);
+  if (failure == *error) {
+    goto cleanup_1;
+  }
+
   if (!found) {
     goto cleanup_2;
   }
@@ -133,33 +139,31 @@ void insert_element(int fd, const char *key, const char *value,
   SafeBuffer *safe_buffer = allocate_page_buffer();
   if (NULL == safe_buffer) {
     *error = failure;
-    goto cleanup_3;
+    goto cleanup_2;
   }
 
   read_page_into_buffer(fd, new_index, safe_buffer, error);
   if (failure == *error) {
-    goto cleanup_4;
+    goto cleanup_3;
   }
 
   unlock_page(fd, new_index, error);
 
   delete_element(fd, key, error);
   if (failure == *error) {
-    goto cleanup_4;
+    goto cleanup_3;
   }
 
   DataPage data_page = create_data_page(safe_buffer);
   data_page_insert_entry(&data_page, &record, original_index);
   write_page_to_file(fd, safe_buffer, new_index, false, error);
 
-cleanup_4:
-  free_page_buffer(safe_buffer);
 cleanup_3:
-  unlock_page(fd, new_index, error);
+  free_page_buffer(safe_buffer);
 cleanup_2:
-  free_page_buffer(record_safe_buffer);
+  unlock_page(fd, new_index, error);
 cleanup_1:
-  close_database_file(fd, error);
+  free_page_buffer(record_safe_buffer);
 cleanup_0:
   return;
 }
@@ -170,7 +174,7 @@ bool delete_element(int fd, const char *key, enum FileErrorStatus *error) {
 
   uint64_t number_pages = no_pages(fd, error);
   if (failure == *error) {
-    goto cleanup_1;
+    goto cleanup_0;
   }
 
   uint64_t index = hash(key, number_pages - 1);
@@ -179,6 +183,10 @@ bool delete_element(int fd, const char *key, enum FileErrorStatus *error) {
                                       .inner_arguments = &key_match};
   bool found = find_element(fd, &closure, number_pages, index, &index, error);
 
+  if (failure == *error) {
+    goto cleanup_0;
+  }
+
   if (!found) {
     goto cleanup_1;
   }
@@ -186,29 +194,29 @@ bool delete_element(int fd, const char *key, enum FileErrorStatus *error) {
   SafeBuffer *safe_buffer = allocate_page_buffer();
   if (NULL == safe_buffer) {
     *error = failure;
-    goto cleanup_2;
+    goto cleanup_1;
   }
 
   read_page_into_buffer(fd, index, safe_buffer, error);
   if (failure == *error) {
-    goto cleanup_3;
+    goto cleanup_2;
   }
 
   DataPage data_page = create_data_page(safe_buffer);
   return_value = data_page_delete_entry(&data_page, key);
 
-  write_lock_page(fd, index, error);
+  if (return_value) {
+    write_lock_page(fd, index, error);
+  }
   if (failure == *error) {
-    goto cleanup_3;
+    goto cleanup_2;
   }
   write_page_to_file(fd, safe_buffer, index, false, error);
 
-cleanup_3:
-  free_page_buffer(safe_buffer);
 cleanup_2:
-  unlock_page(fd, index, error);
+  free_page_buffer(safe_buffer);
 cleanup_1:
-  close_database_file(fd, error);
+  unlock_page(fd, index, error);
 cleanup_0:
   return return_value;
 }
