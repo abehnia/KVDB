@@ -3,9 +3,10 @@
 #include "record.h"
 #include <assert.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <string.h>
 
-// page id (8 bytes) | free_page (1 byte) | no_entries (2 bytes) | free space (2
+// hash (8 bytes) | free_page (1 byte) | no_entries (2 bytes) | free space (2
 // bytes) | data (4083 bytes)
 
 #define BYTE_SIZE (8)
@@ -22,7 +23,7 @@
 #define FREE_SPACE_SIZE (2)
 #define FREE_SPACE_OFFSET (NO_ENTRIES_OFFSET + NO_ENTRIES_SIZE)
 
-#define DATA_OFFSET (FREE_PAGE_OFFSET + FREE_PAGE_SIZE)
+#define DATA_OFFSET (FREE_SPACE_OFFSET + FREE_SPACE_SIZE)
 
 static uint64_t transform_bytes_to_data(const uint8_t *buffer, uint32_t offset,
                                         uint32_t size);
@@ -35,6 +36,7 @@ static void update_hash(DataPage *data_page, uint64_t hash);
 
 DataPage data_page_from_data(SafeBuffer *safe_buffer, uint64_t page_id) {
   assert(safe_buffer);
+  safe_buffer->length = DATA_PAGE_SIZE;
   uint8_t *buffer = get_buffer(safe_buffer);
   memset(buffer, 0, get_buffer_capacity(safe_buffer));
   DataPage data_page = {.safe_buffer = safe_buffer};
@@ -45,15 +47,15 @@ DataPage data_page_from_data(SafeBuffer *safe_buffer, uint64_t page_id) {
 }
 
 DataPage create_data_page(SafeBuffer *safe_buffer) {
-  assert(get_buffer_capacity(safe_buffer) > DATA_PAGE_SIZE);
+  assert(get_buffer_capacity(safe_buffer) >= DATA_PAGE_SIZE);
   return (DataPage){.safe_buffer = safe_buffer};
 }
 
 size_t data_page_free_space(const DataPage *data_page) {
   assert_data_page(data_page);
   const uint8_t *buffer = get_buffer(data_page->safe_buffer);
-  return (size_t)transform_bytes_to_data(buffer, FREE_PAGE_OFFSET,
-                                         FREE_PAGE_SIZE);
+  return (size_t)transform_bytes_to_data(buffer, FREE_SPACE_OFFSET,
+                                         FREE_SPACE_SIZE);
 }
 
 size_t data_page_no_entries(const DataPage *data_page) {
@@ -185,7 +187,7 @@ static void write_data_to_buffer(uint8_t *buffer, uint32_t offset,
                                  uint32_t size, uint64_t data) {
   for (uint64_t i = offset; i < (offset + size); ++i) {
     buffer[i] = data & 0xFF;
-    data = data >> sizeof(uint8_t);
+    data = data >> BYTE_SIZE;
   }
 }
 

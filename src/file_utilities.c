@@ -22,9 +22,9 @@ static void assert_page_size(uint64_t page_id);
 int create_database_file(char *path, uint64_t no_elements,
                          enum FileErrorStatus *error) {
   assert(no_elements < MAX_NO_ELEMENTS);
-  int fd = open(path, O_WRONLY | O_APPEND | O_CREAT | O_EXCL);
+  int fd = open(path, O_WRONLY | O_APPEND | O_CREAT | O_EXCL, 0600);
 
-  *error = failure;
+  *error = success;
   if (-1 == fd) {
     fprintf(stderr, "cannot create database file, check permissions or if file "
                     "already exists.\n");
@@ -32,11 +32,9 @@ int create_database_file(char *path, uint64_t no_elements,
   }
 
   uint64_t no_pages_needed =
-      (((no_elements * RECORD_SIZE_ESTIMATE - PAGE_HEADER_SIZE_ESTIMATE + 1) /
-        PAGE_HEADER_SIZE_ESTIMATE)
+      (((no_elements * RECORD_SIZE_ESTIMATE - PAGE_SIZE + 1) / PAGE_SIZE)
        << 1) +
       1;
-  printf("no_pages: %lu", no_pages_needed);
   SafeBuffer *safe_buffer = allocate_page_buffer();
   if (NULL == safe_buffer) {
     return -1;
@@ -63,24 +61,24 @@ int create_database_file(char *path, uint64_t no_elements,
         return -1;
       }
     }
-    unlock_page(fd, 0, error);
-    if (failure == *error) {
-      free_page_buffer(safe_buffer);
-      return -1;
-    }
   }
-  *error = success;
+  unlock_page(fd, 0, error);
+  if (failure == *error) {
+    free_page_buffer(safe_buffer);
+    return -1;
+  }
   free_page_buffer(safe_buffer);
   return fd;
 }
 
 int open_database_file(char *path, enum FileErrorStatus *error) {
   int fd = open(path, O_RDWR);
-  *error = failure;
+  *error = success;
 
   if (-1 == fd) {
     fprintf(stderr, "cannot open database file, check permissions or if file "
                     "already exists.\n");
+    *error = failure;
     return -1;
   }
   read_lock_page(fd, 0, error);
@@ -89,6 +87,7 @@ int open_database_file(char *path, enum FileErrorStatus *error) {
   }
   SafeBuffer *safe_buffer = allocate_page_buffer();
   if (NULL == safe_buffer) {
+    *error = failure;
     return -1;
   }
   // check if header is correct
@@ -100,11 +99,11 @@ int open_database_file(char *path, enum FileErrorStatus *error) {
   HeaderPage header_page = open_header_page(safe_buffer);
   uint64_t local_header_version = header_version(&header_page);
   if (local_header_version != DATABASE_VERSION) {
+    *error = failure;
     free_page_buffer(safe_buffer);
     return -1;
   }
 
-  *error = success;
   return fd;
 }
 
@@ -112,22 +111,23 @@ void read_page_into_buffer(int file, uint64_t page_id, SafeBuffer *safe_buffer,
                            enum FileErrorStatus *error) {
   assert_page_size(page_id);
 
-  *error = failure;
+  *error = success;
 
   uint64_t offset_from_start = (page_id * PAGE_SIZE);
   off_t lseek_offset = lseek(file, offset_from_start, SEEK_SET);
   if (-1 == lseek_offset) {
+    *error = failure;
     fprintf(stderr, "lseek failed while reading.");
     return;
   }
 
   ssize_t bytes_read = read(file, get_buffer(safe_buffer), PAGE_SIZE);
   if (PAGE_SIZE != bytes_read) {
+    *error = failure;
     fprintf(stderr, "failed to read a page from file.");
     return;
   }
 
-  *error = success;
   set_buffer_length(safe_buffer, PAGE_SIZE);
 }
 
@@ -135,22 +135,25 @@ void write_page_to_file(int file, SafeBuffer *safe_buffer, uint64_t page_id,
                         bool append_only, enum FileErrorStatus *error) {
   assert_page_size(page_id);
 
-  *error = failure;
+  *error = success;
 
   if (!append_only) {
     uint64_t offset_from_start = (page_id * PAGE_SIZE);
     off_t lseek_offset = lseek(file, offset_from_start, SEEK_SET);
     if (-1 == lseek_offset) {
+      *error = failure;
       fprintf(stderr, "lseek failed while writing.");
       return;
     }
   }
 
-  size_t bytes_written =
-      write(file, get_buffer(safe_buffer), get_buffer_length(safe_buffer));
+  size_t bytes_written = write(file, get_buffer(safe_buffer), PAGE_SIZE);
   if (bytes_written != get_buffer_length(safe_buffer)) {
     fprintf(stderr, "failed to write to file.");
+    *error = failure;
+    return;
   }
+  *error = success;
 }
 
 void read_lock_page(int file, uint64_t page_id, enum FileErrorStatus *error) {
@@ -175,13 +178,15 @@ void unlock_page(int file, uint64_t page_id, enum FileErrorStatus *error) {
 }
 
 void close_database_file(int fd, enum FileErrorStatus *error) {
-  *error = failure;
+  *error = success;
   unlock_page(fd, 0, error);
   if (-1 == fd) {
+    *error = failure;
     return;
   }
   int close_error = close(fd);
   if (-1 == close_error) {
+    *error = failure;
     fprintf(stderr, "failed to close database file.\n");
   }
   *error = success;

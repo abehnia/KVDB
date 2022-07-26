@@ -1,13 +1,15 @@
-#include "xxhash.h"
 #include "engine.h"
 #include "buffer_manager.h"
 #include "data_page.h"
 #include "file_utilities.h"
 #include "header_page.h"
 #include "record.h"
+#include "xxhash.h"
+#include <stdio.h>
 #include <string.h>
+#include <time.h>
 
-static uint64_t hash(const char *key);
+static uint64_t hash(const char *key, size_t no_non_header_pages);
 
 void create_database(char *path, uint64_t no_elements,
                      enum FileErrorStatus *error) {
@@ -36,7 +38,7 @@ bool query_element(char *path, const char *key, Record *record,
 
   HeaderPage header_page = open_header_page(safe_buffer);
   uint64_t no_pages = header_no_pages(&header_page);
-  uint64_t index = hash(key);
+  uint64_t index = hash(key, no_pages - 1);
   uint64_t count = 0;
 
   for (uint64_t i = index; count != no_pages - 1;) {
@@ -99,16 +101,18 @@ void insert_element(char *path, const char *key, const char *value,
   }
 
   Record record = record_from_data(record_safe_buffer, key, value);
+  time_t bla = (time_t)record_first_timestamp(&record).seconds;
+         record_value(&record), get_record_length(&record),
+         asctime(gmtime(&bla)));
 
   HeaderPage header_page = open_header_page(safe_buffer);
   uint64_t no_pages = header_no_pages(&header_page);
-  uint64_t index = hash(key);
+  uint64_t index = hash(key, no_pages - 1);
   uint64_t count = 0;
 
   bool inserted = false;
-  bool deleted = false;
 
-  for (uint64_t i = index; (count != no_pages - 1) && !(deleted && inserted);) {
+  for (uint64_t i = index; (count != no_pages - 1) && !inserted;) {
     read_page_into_buffer(fd, i, safe_buffer, error);
     if (failure == *error) {
       free_page_buffer(safe_buffer);
@@ -125,23 +129,17 @@ void insert_element(char *path, const char *key, const char *value,
     if (!inserted) {
       if (0 == length) {
         data_page_insert_entry(&data_page, &record, index);
+        write_page_to_file(fd, safe_buffer, i, false, error);
         inserted = true;
       } else {
         if (original_hash == index && record_length < free_space) {
           data_page_insert_entry(&data_page, &record, index);
+          write_page_to_file(fd, safe_buffer, i, false, error);
         }
         inserted = true;
       }
     }
 
-    if (!deleted) {
-      if (original_hash == index) {
-        bool found = data_page_delete_entry(&data_page, key);
-        if (found) {
-          deleted = true;
-        }
-      }
-    }
 
     i = (i == no_pages - 1) ? 1 : (i + 1) % no_pages;
     ++count;
@@ -161,8 +159,8 @@ void delete_element(char *path, const char *key, enum FileErrorStatus *error) {
   }
 }
 
-static uint64_t hash(const char *key) {
-   size_t length = strnlen(key, 100);
-   XXH64_hash_t hash = XXH64(key, length, 0);
-   return hash;
+static uint64_t hash(const char *key, size_t no_non_header_pages) {
+  size_t length = strnlen(key, 100);
+  XXH64_hash_t hash = XXH64(key, length, 0);
+  return (hash % no_non_header_pages) + 1;
 }

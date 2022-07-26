@@ -31,6 +31,7 @@ HeaderPage create_header_page(SafeBuffer *safe_buffer, uint64_t no_pages) {
   assert(safe_buffer);
   uint8_t *buffer = get_buffer(safe_buffer);
   memset(buffer, 0, get_buffer_capacity(safe_buffer));
+  safe_buffer->length = HEADER_PAGE_SIZE;
   HeaderPage header_page = {.safe_buffer = safe_buffer};
   update_page_id(&header_page, 0);
   update_version(&header_page, DATABASE_VERSION);
@@ -39,7 +40,7 @@ HeaderPage create_header_page(SafeBuffer *safe_buffer, uint64_t no_pages) {
 }
 
 HeaderPage open_header_page(SafeBuffer *safe_buffer) {
-  assert(get_buffer_capacity(safe_buffer) > HEADER_PAGE_SIZE);
+  assert(get_buffer_capacity(safe_buffer) >= HEADER_PAGE_SIZE);
   return (HeaderPage){.safe_buffer = safe_buffer};
 }
 
@@ -88,7 +89,7 @@ static void write_data_to_buffer(uint8_t *buffer, uint32_t offset,
                                  uint32_t size, uint64_t data) {
   for (uint64_t i = offset; i < (offset + size); ++i) {
     buffer[i] = data & 0xFF;
-    data = data >> sizeof(uint8_t);
+    data = data >> BYTE_SIZE;
   }
 }
 

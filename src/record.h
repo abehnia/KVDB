@@ -22,7 +22,7 @@ const char *record_key(const Record *record);
 const char *record_value(const Record *record);
 Timestamp record_first_timestamp(const Record *record);
 Timestamp record_last_timestamp(const Record *record);
-void record_update_data(Record *record, const char *value);
+void record_update_data(Record *record, const char *value, const Timestamp *timestamp);
 uint32_t get_record_length(const Record *record);
 const uint8_t *record_get_buffer(const Record *record);
 void destroy_record(Record *record);

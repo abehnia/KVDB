@@ -24,7 +24,7 @@ static RecordPoolEntry record_pool[POOL_SIZE] = {0};
 
 void set_buffer_length(SafeBuffer *safe_buffer, size_t length) {
   assert(safe_buffer);
-  assert(length < safe_buffer->capacity);
+  assert(length <= safe_buffer->capacity);
   safe_buffer->length = length;
 }
 
