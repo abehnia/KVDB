@@ -131,6 +131,10 @@ Record record_clone(Record *record) {
   return (Record){.safe_buffer = safe_buffer};
 }
 
+void record_set_first_timestamp(Record *record, Timestamp timestamp) {
+  update_first_timestamp(record, &timestamp);
+}
+
 void format_timestamp_into_date(const Timestamp *timestamp, char *date_buffer,
                                 size_t len_date_buffer) {
   char buffer[100];

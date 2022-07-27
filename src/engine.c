@@ -42,7 +42,8 @@ static bool is_space_enough(const DataPage *data_page, uint64_t index,
 static uint64_t no_pages(int fd, enum FileErrorStatus *error);
 
 // API Implementation
-int open_database(char *path, bool with_write_lock , enum FileErrorStatus *error) {
+int open_database(char *path, bool with_write_lock,
+                  enum FileErrorStatus *error) {
   *error = success;
   int fd = open_database_file(path, with_write_lock, error);
   if (failure == *error) {
@@ -149,9 +150,17 @@ void insert_element(int fd, const char *key, const char *value,
 
   unlock_page(fd, new_index, error);
 
-  delete_element(fd, key, error);
+  Record deleted_record;
+  bool deleted = delete_element(fd, key, &deleted_record, error);
   if (failure == *error) {
     goto cleanup_3;
+  }
+
+  Timestamp first_timestamp;
+  if (deleted) {
+    first_timestamp = record_first_timestamp(&deleted_record);
+    record_set_first_timestamp(&record, first_timestamp);
+    destroy_record(&deleted_record);
   }
 
   DataPage data_page = create_data_page(safe_buffer);
@@ -168,7 +177,8 @@ cleanup_0:
   return;
 }
 
-bool delete_element(int fd, const char *key, enum FileErrorStatus *error) {
+bool delete_element(int fd, const char *key, Record *record,
+                    enum FileErrorStatus *error) {
   *error = success;
   bool return_value = false;
 
@@ -203,7 +213,7 @@ bool delete_element(int fd, const char *key, enum FileErrorStatus *error) {
   }
 
   DataPage data_page = create_data_page(safe_buffer);
-  return_value = data_page_delete_entry(&data_page, key);
+  return_value = data_page_delete_entry(&data_page, key, record);
 
   if (return_value) {
     write_lock_page(fd, index, error);

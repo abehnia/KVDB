@@ -10,4 +10,5 @@ bool query_element(int fd, const char *key, Record *record,
                    enum FileErrorStatus *error);
 void insert_element(int fd, const char *key, const char *value,
                     enum FileErrorStatus *error);
-bool delete_element(int fd, const char *key, enum FileErrorStatus *error);
+bool delete_element(int fd, const char *key, Record *record,
+                    enum FileErrorStatus *error);

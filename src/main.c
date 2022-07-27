@@ -73,7 +73,9 @@ int main(int argc, char **argv) {
     if (failure == error) {
       return 1;
     }
-    bool found = delete_element(fd, parsed_values.key, &error);
+
+    Record record;
+    bool found = delete_element(fd, parsed_values.key, &record, &error);
     if (success == error) {
       if (found) {
         printf("successfully deleted element.\n");

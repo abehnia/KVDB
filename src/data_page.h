@@ -15,7 +15,8 @@ size_t data_page_no_entries(const DataPage *data_page);
 bool data_page_is_free_page(const DataPage *data_page);
 bool data_page_find_entry(const DataPage *data_page, const char *key,
                           Record *record);
-bool data_page_delete_entry(DataPage *data_page, const char *key);
+bool data_page_delete_entry(DataPage *data_page, const char *key,
+                            Record *record);
 bool data_page_insert_entry(DataPage *data_page, const Record *record,
                             uint64_t hash);
 uint64_t data_page_hash(const DataPage *data_page);

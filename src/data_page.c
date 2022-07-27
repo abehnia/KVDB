@@ -54,21 +54,20 @@ size_t data_page_free_space(const DataPage *data_page) {
   assert_data_page(data_page);
   const uint8_t *buffer = get_buffer(data_page->safe_buffer);
   return (size_t)read_data_from_buffer(buffer, FREE_SPACE_OFFSET,
-                                         FREE_SPACE_SIZE);
+                                       FREE_SPACE_SIZE);
 }
 
 size_t data_page_no_entries(const DataPage *data_page) {
   assert_data_page(data_page);
   const uint8_t *buffer = get_buffer(data_page->safe_buffer);
   return (size_t)read_data_from_buffer(buffer, NO_ENTRIES_OFFSET,
-                                         NO_ENTRIES_SIZE);
+                                       NO_ENTRIES_SIZE);
 }
 
 bool data_page_is_free_page(const DataPage *data_page) {
   assert_data_page(data_page);
   const uint8_t *buffer = get_buffer(data_page->safe_buffer);
-  return (bool)read_data_from_buffer(buffer, FREE_PAGE_OFFSET,
-                                       FREE_PAGE_SIZE);
+  return (bool)read_data_from_buffer(buffer, FREE_PAGE_OFFSET, FREE_PAGE_SIZE);
 }
 
 uint64_t data_page_hash(const DataPage *data_page) {
@@ -109,13 +108,13 @@ bool data_page_find_entry(const DataPage *data_page, const char *key,
   return find_entry(data_page, key, record, &_index);
 }
 
-bool data_page_delete_entry(DataPage *data_page, const char *key) {
+bool data_page_delete_entry(DataPage *data_page, const char *key,
+                            Record *record) {
   assert_data_page(data_page);
   assert(key);
 
-  Record _record;
   uint32_t index;
-  bool found_entry = find_entry(data_page, key, &_record, &index);
+  bool found_entry = find_entry(data_page, key, record, &index);
   uint8_t *buffer = get_buffer(data_page->safe_buffer);
   if (found_entry) {
     uint8_t *entry_start = buffer + index;
