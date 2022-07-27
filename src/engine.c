@@ -9,9 +9,12 @@
 #include <string.h>
 #include <time.h>
 
-typedef bool (*DatabasePredicate)(const DataPage *data_page, uint64_t index,
-                                  const void *inner_arguments,
-                                  enum FileErrorStatus *error);
+typedef enum { FOUND, NOT_FOUND, WILL_NOT_FIND } PredicateResult;
+
+typedef PredicateResult (*DatabasePredicate)(const DataPage *data_page,
+                                             uint64_t index,
+                                             const void *inner_arguments,
+                                             enum FileErrorStatus *error);
 typedef struct {
   DatabasePredicate predicate;
   void *inner_arguments;
@@ -31,13 +34,14 @@ static bool find_element(int fd, DatabasePredicateClosure *closure,
                          uint64_t no_pages, uint64_t from_index,
                          uint64_t *index, enum FileErrorStatus *error);
 
-static bool is_key_match(const DataPage *data_page, uint64_t index,
-                         const void *inner_arguments,
-                         enum FileErrorStatus *error);
+static PredicateResult is_key_match(const DataPage *data_page, uint64_t index,
+                                    const void *inner_arguments,
+                                    enum FileErrorStatus *error);
 
-static bool is_space_enough(const DataPage *data_page, uint64_t index,
-                            const void *inner_arguments,
-                            enum FileErrorStatus *error);
+static PredicateResult is_space_enough(const DataPage *data_page,
+                                       uint64_t index,
+                                       const void *inner_arguments,
+                                       enum FileErrorStatus *error);
 
 static uint64_t no_pages(int fd, enum FileErrorStatus *error);
 
@@ -241,14 +245,15 @@ static uint64_t hash(const char *key, size_t no_data_pages) {
   return (hash % no_data_pages) + 1;
 }
 
-bool is_key_match(const DataPage *data_page, uint64_t index,
-                  const void *inner_arguments, enum FileErrorStatus *error) {
+PredicateResult is_key_match(const DataPage *data_page, uint64_t index,
+                             const void *inner_arguments,
+                             enum FileErrorStatus *error) {
   *error = success;
   const KeyMatch *typed_inner_arguments = inner_arguments;
 
   bool is_free_page = data_page_is_free_page(data_page);
   if (is_free_page) {
-    return false;
+    return WILL_NOT_FIND;
   }
 
   Record record;
@@ -261,26 +266,29 @@ bool is_key_match(const DataPage *data_page, uint64_t index,
       destroy_record(&record);
     }
 
-    return found;
+    return found ? FOUND : NOT_FOUND;
   }
 
-  return false;
+  return NOT_FOUND;
 }
 
-bool is_space_enough(const DataPage *data_page, uint64_t index,
-                     const void *inner_arguments, enum FileErrorStatus *error) {
+PredicateResult is_space_enough(const DataPage *data_page, uint64_t index,
+                                const void *inner_arguments,
+                                enum FileErrorStatus *error) {
   *error = success;
   const SpaceEnough *typed_inner_arguments = inner_arguments;
 
   size_t length = data_page_no_entries(data_page);
   if (0 == length) {
-    return true;
+    return FOUND;
   }
 
   uint64_t original_hash = data_page_hash(data_page);
   size_t free_space = data_page_free_space(data_page);
   return original_hash == index &&
-         typed_inner_arguments->record_length < free_space;
+                 typed_inner_arguments->record_length < free_space
+             ? FOUND
+             : NOT_FOUND;
 }
 
 // A read lock is kept on the found page if found
@@ -312,16 +320,20 @@ static bool find_element(int fd, DatabasePredicateClosure *closure,
     };
 
     DataPage data_page = create_data_page(safe_buffer);
-    bool found =
+    PredicateResult found =
         closure->predicate(&data_page, i, closure->inner_arguments, error);
     if (failure == *error) {
       goto cleanup_2;
     }
 
-    if (found) {
+    if (FOUND == found) {
       *index = i;
       return_value = true;
       goto cleanup_1;
+    }
+
+    if (WILL_NOT_FIND == found) {
+      goto cleanup_2;
     }
 
     unlock_page(fd, i, error);
