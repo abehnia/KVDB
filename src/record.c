@@ -61,7 +61,6 @@ Record record_from_data(SafeBuffer *safe_buffer, const char *key,
   return record;
 }
 
-// Add value and timestamp to a record with key only
 void record_update_data(Record *record, const char *value,
                         const Timestamp *timestamp) {
   assert(record);
@@ -184,12 +183,12 @@ static uint32_t timestamp_first_offset(const Record *record) {
 static uint32_t timestamp_last_offset(const Record *record) {
   uint32_t offset = timestamp_first_offset(record);
   return offset + TIMESTAMP_SECONDS_SIZE + TIMESTAMP_NANOSECONDS_SIZE;
-  ;
 }
 
 static void update_length(Record *record, uint16_t length) {
   uint8_t *buffer = get_buffer(record->safe_buffer);
-  write_data_to_buffer(buffer, length, LENGTH_OFFSET, LENGTH_SIZE);
+  set_buffer_length(record->safe_buffer, length);
+  write_data_to_buffer(buffer, LENGTH_OFFSET, LENGTH_SIZE, length);
 }
 
 static void update_first_timestamp(Record *record, const Timestamp *timestamp) {
@@ -205,8 +204,7 @@ static void update_last_timestamp(Record *record, const Timestamp *timestamp) {
 static void update_timestamp_helper(Record *record, const Timestamp *timestamp,
                                     uint32_t offset) {
   uint8_t *buffer = get_buffer(record->safe_buffer);
-  write_data_to_buffer(buffer, (uint64_t)timestamp->seconds, offset,
-                       sizeof(uint64_t));
-  write_data_to_buffer(buffer, (uint64_t)timestamp->nanoseconds,
-                       offset + TIMESTAMP_SECONDS_SIZE, sizeof(uint64_t));
+  write_data_to_buffer(buffer, offset, sizeof(uint64_t), timestamp->seconds);
+  write_data_to_buffer(buffer, offset + TIMESTAMP_SECONDS_SIZE,
+                       sizeof(uint64_t), timestamp->nanoseconds);
 }

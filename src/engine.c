@@ -143,15 +143,15 @@ void insert_element(int fd, const char *key, const char *value,
     goto cleanup_2;
   }
 
-  read_page_into_buffer(fd, new_index, safe_buffer, error);
-  if (failure == *error) {
-    goto cleanup_3;
-  }
-
   unlock_page(fd, new_index, error);
 
   Record deleted_record;
   bool deleted = delete_element(fd, key, &deleted_record, error);
+  if (failure == *error) {
+    goto cleanup_3;
+  }
+
+  read_page_into_buffer(fd, new_index, safe_buffer, error);
   if (failure == *error) {
     goto cleanup_3;
   }
@@ -217,11 +217,15 @@ bool delete_element(int fd, const char *key, Record *record,
 
   if (return_value) {
     write_lock_page(fd, index, error);
+    if (failure == *error) {
+      goto cleanup_2;
+    }
+
+    write_page_to_file(fd, safe_buffer, index, false, error);
+    if (failure == *error) {
+      goto cleanup_2;
+    }
   }
-  if (failure == *error) {
-    goto cleanup_2;
-  }
-  write_page_to_file(fd, safe_buffer, index, false, error);
 
 cleanup_2:
   free_page_buffer(safe_buffer);
@@ -250,7 +254,14 @@ bool is_key_match(const DataPage *data_page, uint64_t index,
   Record record;
   uint64_t original_hash = data_page_hash(data_page);
   if (original_hash == index) {
-    return data_page_find_entry(data_page, typed_inner_arguments->key, &record);
+    bool found =
+        data_page_find_entry(data_page, typed_inner_arguments->key, &record);
+
+    if (found) {
+      destroy_record(&record);
+    }
+
+    return found;
   }
 
   return false;

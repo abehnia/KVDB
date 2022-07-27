@@ -35,7 +35,7 @@ static void update_hash(DataPage *data_page, uint64_t hash);
 
 DataPage data_page_from_data(SafeBuffer *safe_buffer, uint64_t page_id) {
   assert(safe_buffer);
-  safe_buffer->length = DATA_PAGE_SIZE;
+  set_buffer_length(safe_buffer, DATA_PAGE_SIZE);
   uint8_t *buffer = get_buffer(safe_buffer);
   memset(buffer, 0, get_buffer_capacity(safe_buffer));
   DataPage data_page = {.safe_buffer = safe_buffer};
@@ -117,16 +117,18 @@ bool data_page_delete_entry(DataPage *data_page, const char *key,
   bool found_entry = find_entry(data_page, key, record, &index);
   uint8_t *buffer = get_buffer(data_page->safe_buffer);
   if (found_entry) {
+    uint32_t first_free_spot = free_spot(data_page);
     uint8_t *entry_start = buffer + index;
     uint8_t *next_entry = entry_start + buffer[index];
-    uint32_t copy_length = buffer[index];
+    uint32_t record_length = buffer[index];
+    uint32_t copy_length = first_free_spot - index - record_length;
     memmove(entry_start, next_entry, copy_length);
     size_t no_entries = data_page_no_entries(data_page);
     update_no_entries(data_page, no_entries - 1);
     size_t free_space = data_page_free_space(data_page);
-    update_free_space(data_page, free_space + copy_length);
-    uint32_t first_free_spot = free_spot(data_page);
-    memset(buffer + first_free_spot, 0, copy_length);
+    update_free_space(data_page, free_space + record_length);
+    uint32_t new_first_free_spot = free_spot(data_page);
+    memset(buffer + new_first_free_spot, 0, record_length);
     return true;
   }
   return false;

@@ -80,7 +80,7 @@ int main(int argc, char **argv) {
       if (found) {
         printf("successfully deleted element.\n");
       } else {
-        printf("cannot find element,\n");
+        printf("cannot find element.\n");
       }
     } else {
       printf("error in delete element.\n");

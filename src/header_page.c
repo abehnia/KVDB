@@ -28,7 +28,7 @@ HeaderPage create_header_page(SafeBuffer *safe_buffer, uint64_t no_pages) {
   assert(safe_buffer);
   uint8_t *buffer = get_buffer(safe_buffer);
   memset(buffer, 0, get_buffer_capacity(safe_buffer));
-  safe_buffer->length = HEADER_PAGE_SIZE;
+  set_buffer_length(safe_buffer, HEADER_PAGE_SIZE);
   HeaderPage header_page = {.safe_buffer = safe_buffer};
   update_page_id(&header_page, 0);
   update_version(&header_page, DATABASE_VERSION);

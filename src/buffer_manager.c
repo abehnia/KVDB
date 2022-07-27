@@ -19,8 +19,8 @@ typedef struct record_pool_entry {
   bool allocated;
 } RecordPoolEntry;
 
-static PagePoolEntry page_pool[POOL_SIZE] = {0};
-static RecordPoolEntry record_pool[POOL_SIZE] = {0};
+static PagePoolEntry page_pool[POOL_SIZE];
+static RecordPoolEntry record_pool[POOL_SIZE];
 
 void set_buffer_length(SafeBuffer *safe_buffer, size_t length) {
   assert(safe_buffer);
@@ -54,7 +54,7 @@ SafeBuffer *allocate_page_buffer(void) {
       return safe_buffer;
     }
   }
-  fprintf(stderr, "cannot allocate page inside buffer pool");
+  fprintf(stderr, "cannot allocate page inside buffer pool.\n");
   return NULL;
 }
 
@@ -72,15 +72,15 @@ void free_page_buffer(SafeBuffer *buffer) {
 SafeBuffer *allocate_record_buffer(void) {
   for (uint32_t i = 0; i < POOL_SIZE; ++i) {
     RecordPoolEntry *pool_entry = record_pool + i;
-    if (false == record_pool->allocated) {
-      SafeBuffer *safe_buffer = &record_pool->safe_buffer;
+    if (false == pool_entry->allocated) {
+      SafeBuffer *safe_buffer = &pool_entry->safe_buffer;
       safe_buffer->capacity = RECORD_SIZE_ESTIMATE;
       safe_buffer->buffer = pool_entry->buffer;
       pool_entry->allocated = true;
       return safe_buffer;
     }
   }
-  fprintf(stderr, "cannot allocate record inside buffer pool");
+  fprintf(stderr, "cannot allocate record inside buffer pool.\n");
   return NULL;
 }
 

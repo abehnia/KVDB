@@ -28,6 +28,7 @@ int create_database_file(char *path, uint64_t no_elements,
   if (-1 == fd) {
     fprintf(stderr, "cannot create database file, check permissions or if file "
                     "already exists.\n");
+    *error = failure;
     return -1;
   }
 
@@ -37,6 +38,7 @@ int create_database_file(char *path, uint64_t no_elements,
       1;
   SafeBuffer *safe_buffer = allocate_page_buffer();
   if (NULL == safe_buffer) {
+    *error = failure;
     return -1;
   }
 
@@ -145,14 +147,14 @@ void read_page_into_buffer(int file, uint64_t page_id, SafeBuffer *safe_buffer,
   off_t lseek_offset = lseek(file, offset_from_start, SEEK_SET);
   if (-1 == lseek_offset) {
     *error = failure;
-    fprintf(stderr, "lseek failed while reading.");
+    fprintf(stderr, "lseek failed while reading.\n");
     return;
   }
 
   ssize_t bytes_read = read(file, get_buffer(safe_buffer), PAGE_SIZE);
   if (PAGE_SIZE != bytes_read) {
     *error = failure;
-    fprintf(stderr, "failed to read a page from file.");
+    fprintf(stderr, "failed to read a page from file.\n");
     return;
   }
 
@@ -190,14 +192,14 @@ void write_page_to_file(int file, SafeBuffer *safe_buffer, uint64_t page_id,
     off_t lseek_offset = lseek(file, offset_from_start, SEEK_SET);
     if (-1 == lseek_offset) {
       *error = failure;
-      fprintf(stderr, "lseek failed while writing.");
+      fprintf(stderr, "lseek failed while writing.\n");
       return;
     }
   }
 
   size_t bytes_written = write(file, get_buffer(safe_buffer), PAGE_SIZE);
   if (bytes_written != get_buffer_length(safe_buffer)) {
-    fprintf(stderr, "failed to write to file.");
+    fprintf(stderr, "failed to write to file.\n");
     *error = failure;
     return;
   }
@@ -208,21 +210,21 @@ void read_lock_page(int file, uint64_t page_id, enum FileErrorStatus *error) {
   assert_page_size(page_id);
 
   lock_page(file, page_id, error,
-            "process interrupted while read locking page.", F_RDLCK);
+            "process interrupted while read locking page.\n", F_RDLCK);
 }
 
 void write_lock_page(int file, uint64_t page_id, enum FileErrorStatus *error) {
   assert_page_size(page_id);
 
   lock_page(file, page_id, error,
-            "process interrupted while write locking page.", F_WRLCK);
+            "process interrupted while write locking page.\n", F_WRLCK);
 }
 
 void unlock_page(int file, uint64_t page_id, enum FileErrorStatus *error) {
   assert_page_size(page_id);
 
   lock_page(file, page_id, error,
-            "process interrupted while write locking page.", F_UNLCK);
+            "process interrupted while write locking page.\n", F_UNLCK);
 }
 
 void close_database_file(int fd, enum FileErrorStatus *error) {

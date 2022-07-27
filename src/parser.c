@@ -50,7 +50,7 @@ ParsedValues parse_values(Command command, int argc, char **argv,
 
   ParsedValues parsed_values;
   parsed_values.command = command;
-  parsed_values.path = argv[1];
+  parsed_values.path = argv[2];
   parsed_values.key = argv[3];
 
   if (argc != command_data[command].command_len || !check_strings(argc, argv)) {
@@ -64,7 +64,7 @@ ParsedValues parse_values(Command command, int argc, char **argv,
     break;
   case COMMAND_CREATE: {
     char *end;
-    parsed_values.no_elements = strtoull(argv[4], &end, 10);
+    parsed_values.no_elements = strtoull(argv[3], &end, 10);
     if (parsed_values.no_elements == 0) {
       *error = failure;
       return parsed_values;
@@ -85,7 +85,7 @@ static bool check_string_size(const char *string) {
 static bool check_strings(int command_length, char **strings) {
   for (uint64_t i = 2; i < command_length; ++i) {
     if (!check_string_size(strings[i])) {
-      fprintf(stderr, "invalid input string length\n.");
+      fprintf(stderr, "invalid input string length.\n");
       return false;
     }
   }
