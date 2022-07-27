@@ -1,6 +1,6 @@
-#include "buffer_manager.h"
-#include "file_utilities.h"
-#include "record.h"
+#include "../include/buffer_manager.h"
+#include "../include/file_utilities.h"
+#include "../include/record.h"
 #include <assert.h>
 #include <stdbool.h>
 #include <stdio.h>

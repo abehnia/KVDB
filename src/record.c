@@ -1,6 +1,6 @@
-#include "record.h"
-#include "buffer_manager.h"
-#include "buffer_utilities.h"
+#include "../include/record.h"
+#include "../include/buffer_manager.h"
+#include "../include/buffer_utilities.h"
 #include <assert.h>
 #include <errno.h>
 #include <stdio.h>

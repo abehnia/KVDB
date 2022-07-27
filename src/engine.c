@@ -1,10 +1,10 @@
-#include "engine.h"
-#include "buffer_manager.h"
-#include "data_page.h"
-#include "file_utilities.h"
-#include "header_page.h"
-#include "record.h"
-#include "xxhash.h"
+#include "../include/engine.h"
+#include "../include/buffer_manager.h"
+#include "../include/data_page.h"
+#include "../include/file_utilities.h"
+#include "../include/header_page.h"
+#include "../include/record.h"
+#include "../include/xxhash.h"
 #include <stdio.h>
 #include <string.h>
 #include <time.h>

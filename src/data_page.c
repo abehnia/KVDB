@@ -1,7 +1,7 @@
-#include "data_page.h"
-#include "buffer_manager.h"
-#include "buffer_utilities.h"
-#include "record.h"
+#include "../include/data_page.h"
+#include "../include/buffer_manager.h"
+#include "../include/buffer_utilities.h"
+#include "../include/record.h"
 #include <assert.h>
 #include <stdint.h>
 #include <stdio.h>

@@ -1,6 +1,6 @@
-#include "header_page.h"
-#include "buffer_manager.h"
-#include "buffer_utilities.h"
+#include "../include/header_page.h"
+#include "../include/buffer_manager.h"
+#include "../include/buffer_utilities.h"
 #include <assert.h>
 #include <stdint.h>
 #include <string.h>

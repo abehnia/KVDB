@@ -1,5 +1,5 @@
-#include "parser.h"
-#include "constants.h"
+#include "../include/parser.h"
+#include "../include/constants.h"
 #include <inttypes.h>
 #include <stdbool.h>
 #include <stdio.h>

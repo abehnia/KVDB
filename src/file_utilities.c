@@ -1,7 +1,7 @@
-#include "file_utilities.h"
-#include "buffer_manager.h"
-#include "data_page.h"
-#include "header_page.h"
+#include "../include/file_utilities.h"
+#include "../include/buffer_manager.h"
+#include "../include/data_page.h"
+#include "../include/header_page.h"
 #include <assert.h>
 #include <fcntl.h>
 #include <stdbool.h>

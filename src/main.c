@@ -1,7 +1,7 @@
-#include "engine.h"
-#include "file_utilities.h"
-#include "parser.h"
-#include "record.h"
+#include "../include/engine.h"
+#include "../include/file_utilities.h"
+#include "../include/parser.h"
+#include "../include/record.h"
 #include <inttypes.h>
 #include <stdio.h>
 #include <stdlib.h>

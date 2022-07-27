@@ -1,5 +1,5 @@
-#include "buffer_utilities.h"
-#include "constants.h"
+#include "../include/buffer_utilities.h"
+#include "../include/constants.h"
 
 uint64_t read_data_from_buffer(const uint8_t *buffer, uint32_t offset,
                                 uint32_t size) {
